@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stylish QR Code Scanner</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f8f9fa;
+            color: #007bff;
+        }
+        .container {
+            max-width: 600px;
+        }
+        #scanner-container {
+            position: relative;
+            border: 2px dashed #007bff;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        #reader {
+            width: 100%;
+            border: 2px solid #007bff;
+            border-radius: 5px;
+        }
+        #scanner-line {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 100%;
+            background-color: #007bff;
+            animation: scannerAnimation 1.5s infinite linear;
+        }
+        #scanner-arrow {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 15px solid #007bff;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        #image-input {
+            display: none;
+        }
+        .btn {
+            margin-top: 20px;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+            border-color: #218838;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #c82333;
+        }
+
+        @keyframes scannerAnimation {
+            0% {
+                height: 0;
+            }
+            50% {
+                height: 100%;
+            }
+            100% {
+                height: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="scanner-container" class="card">
+            <div id="scanner-line"></div>
+            <div id="scanner-arrow"></div>
+            <div id="reader"></div>
+        </div>
+        <div id="result"></div>
+        <input type="file" accept="image/*" id="image-input" onchange="scanImage()">
+        <label for="image-input" class="btn btn-primary">Select Image</label>
+        <button onclick="startCamera()" class="btn btn-success">Start Camera</button>
+        <button onclick="stopScanner()" class="btn btn-danger">Stop Scanner</button>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script>
+        let html5QrcodeScanner;
+
+        // Initialize scanner when the page loads
+        window.onload = function () {
+            initializeScanner();
+        };
+
+        function initializeScanner() {
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length) {
+                    const cameraId = devices[0].id;
+                    html5QrcodeScanner = new Html5Qrcode("reader");
+                }
+            }).catch(err => {
+                console.error(`Error getting cameras: ${err}`);
+            });
+        }
+
+        function startCamera() {
+            if (html5QrcodeScanner) {
+                // Request camera permission
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(() => {
+                        html5QrcodeScanner.start(
+                            { facingMode: "environment" },
+                            { fps: 10, qrbox: { width: 250, height: 250 } },
+                            (decodedText) => {
+                                console.log(`Code matched = ${decodedText}`);
+                                // Display the extracted text on the page
+                                document.getElementById('result').innerText = `Scanned QR Code: ${decodedText}`;
+                            },
+                            (errorMessage) => {
+                                console.warn(`Code scan error = ${errorMessage}`);
+                            }
+                        ).catch(err => {
+                            console.error(`Error starting camera: ${err}`);
+                        });
+                    })
+                    .catch(err => {
+                        console.error(`Error accessing camera: ${err}`);
+                    });
+            }
+        }
+
+        function stopScanner() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.stop().then(() => {
+                    console.log('Scanner stopped');
+                    document.getElementById('result').innerText = '';
+                }).catch(err => {
+                    console.error(`Error stopping scanner: ${err}`);
+                });
+            }
+        }
+
+        function scanImage() {
+            const input = document.getElementById('image-input');
+            const file = input.files[0];
+
+            if (file) {
+                const html5QrCode = new Html5Qrcode("reader");
+                html5QrCode.scanFile(file, true)
+                    .then(decodedText => {
+                        console.log(`Scanned QR Code from image: ${decodedText}`);
+                        document.getElementById('result').innerText = `Scanned QR Code: ${decodedText}`;
+                    })
+                    .catch(err => {
+                        console.error(`Error scanning image: ${err}`);
+                        document.getElementById('result').innerText = 'Error scanning image';
+                    })
+                    .finally(() => {
+                        input.value = ''; // Clear input
+                        html5QrCode.clear(); // Clear canvas
+                    });
+            }
+        }
+    </script>
+</body>
+</html>
